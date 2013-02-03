@@ -1,7 +1,7 @@
 require 'rack-cache'
 require 'sinatra'
 require 'faraday'
-require 'rmagick'
+require 'RMagick'
 
 one_day = 24 * 60 * 60
 
