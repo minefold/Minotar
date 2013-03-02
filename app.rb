@@ -2,8 +2,11 @@ require 'rack-cache'
 require 'sinatra'
 require 'faraday'
 require 'RMagick'
+require 'librato-rack'
 
 one_day = 24 * 60 * 60
+
+use Librato::Rack
 
 use Rack::Cache, verbose: true,
                  default_ttl: one_day,
@@ -12,9 +15,13 @@ use Rack::Cache, verbose: true,
 
 get '/helm/:username/:size.png' do |username, size|
   url = "http://s3.amazonaws.com/MinecraftSkins/#{username}.png"
-  response = Faraday.get(url)
+  response = Librato.measure('mojang.skin.time') do
+    Faraday.get(url)
+  end
 
   if response.status == 200
+    Librato.increment 'mojang.skin.custom'
+
     skin = Magick::ImageList.new
     skin.from_blob(response.body)
 
@@ -23,6 +30,8 @@ get '/helm/:username/:size.png' do |username, size|
 
     avatar = head.composite(helm, 0, 0, Magick::AtopCompositeOp)
   else
+    Librato.increment 'mojang.skin.default'
+
     url = "http://s3.amazonaws.com/MinecraftSkins/char.png"
     response = Faraday.get(url)
 
