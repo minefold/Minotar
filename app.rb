@@ -4,12 +4,15 @@ require 'faraday'
 require 'RMagick'
 require 'librato-rack'
 
-one_day = 24 * 60 * 60
+configure do
+  STDOUT.sync = true
+  set :ttl, 24 * 60 * 60
+end
 
 use Librato::Rack
 
 use Rack::Cache, verbose: true,
-                 default_ttl: one_day,
+                 default_ttl: settings.ttl,
                  allow_revalidate: true,
                  allow_reload: true
 
