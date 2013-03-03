@@ -15,36 +15,38 @@ use Rack::Cache, verbose: true,
 
 get '/helm/:username/:size.png' do |username, size|
   url = "http://s3.amazonaws.com/MinecraftSkins/#{username}.png"
-  response = Librato.measure('mojang.skin.time') do
+  response = Librato.measure('mojang.skin.request.time') do
     Faraday.get(url)
   end
 
-  if response.status == 200
-    Librato.increment 'mojang.skin.custom'
+  avatar = Librato.measure('mojang.skin.composite.time') do
+    if response.status == 200
+      Librato.increment 'mojang.skin.custom'
 
-    skin = Magick::ImageList.new
-    skin.from_blob(response.body)
+      skin = Magick::ImageList.new
+      skin.from_blob(response.body)
 
-    helm = skin.crop(40, 8, 8, 8)
-    head = skin.crop(8, 8, 8, 8)
+      helm = skin.crop(40, 8, 8, 8)
+      head = skin.crop(8, 8, 8, 8)
 
-    avatar = head.composite(helm, 0, 0, Magick::AtopCompositeOp)
-  else
-    Librato.increment 'mojang.skin.default'
+      head.composite(helm, 0, 0, Magick::AtopCompositeOp)
+    else
+      Librato.increment 'mojang.skin.default'
 
-    url = "http://s3.amazonaws.com/MinecraftSkins/char.png"
-    response = Faraday.get(url)
+      url = "http://s3.amazonaws.com/MinecraftSkins/char.png"
+      response = Faraday.get(url)
 
-    skin = Magick::ImageList.new
-    skin.from_blob(response.body)
+      skin = Magick::ImageList.new
+      skin.from_blob(response.body)
 
-    helm = skin.crop(40, 8, 8, 8)
-    head = skin.crop(8, 8, 8, 8)
+      helm = skin.crop(40, 8, 8, 8)
+      head = skin.crop(8, 8, 8, 8)
 
-    avatar = head.composite(helm, 0, 0, Magick::AtopCompositeOp)
+      head.composite(helm, 0, 0, Magick::AtopCompositeOp)
+    end.sample(size.to_i, size.to_i)
   end
 
   headers 'Etag' => response.headers['ETag']
   content_type :png
-  avatar.sample(size.to_i, size.to_i).to_blob
+  avatar.to_blob
 end
